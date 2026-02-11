@@ -1,16 +1,39 @@
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 public class Marshaller {
 
-    // Packs the response into a 16-byte array
-    public static byte[] marshallResponse(int reqId, int status, double balance) {
-        // Allocate exactly 16 bytes
-        ByteBuffer buffer = ByteBuffer.allocate(16);
+    public static BankRequest unmarshall(byte[] payload) {
+        //TODO
+        return BankRequest();
+    }
+    // Packs a simple Success/Fail response with a message
+    public static byte[] packResponse(int reqId, int status, String message) {
+        byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
 
-        buffer.putInt(reqId);    // 4 bytes
-        buffer.putInt(status);   // 4 bytes
-        buffer.putDouble(balance); // 8 bytes
+        // Calculate size: 4 (ReqID) + 4 (Status) + 4 (StrLen) + N (StrBytes)
+        int totalSize = 4 + 4 + 4 + msgBytes.length;
 
-        return buffer.array(); // Returns the raw byte[] to send via UDP
+        ByteBuffer buf = ByteBuffer.allocate(totalSize);
+
+        buf.putInt(reqId);
+        buf.putInt(status); // e.g., 1=Success, 0=Fail
+
+        // Pack String
+        buf.putInt(msgBytes.length);
+        buf.put(msgBytes);
+
+        return buf.array();
+    }
+
+    // Packs a response that includes a Balance (for Deposit/Withdraw)
+    public static byte[] packBalanceResponse(int reqId, int status, double balance) {
+        ByteBuffer buf = ByteBuffer.allocate(16); // Fixed size is fine here if no string
+
+        buf.putInt(reqId);
+        buf.putInt(status);
+        buf.putDouble(balance);
+
+        return buf.array();
     }
 }

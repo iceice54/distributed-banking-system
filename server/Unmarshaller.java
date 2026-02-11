@@ -1,29 +1,47 @@
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class Unmarshaller {
+    public static BankRequest unmarshall(byte[] payload) {
+        ByteBuffer buf = ByteBuffer.wrap(payload);
+        BankRequest req = new BankRequest();
 
-    // Returns a "Request Object" (you can define a simple class for this)
-    public static BankRequest unmarshall(byte[] data) {
-        // Wrap the byte array to easily read integers and doubles
-        ByteBuffer buffer = ByteBuffer.wrap(data);
+        req.methodId = buf.getInt();
+        req.reqId    = buf.getInt();
 
-        // Java reads Big-Endian by default, matching C++'s htonl()
-        int methodId = buffer.getInt();   // Offset 0
-        int reqId    = buffer.getInt();   // Offset 4
-        int accId    = buffer.getInt();   // Offset 8
-        double amount = buffer.getDouble(); // Offset 12
-
-        return new BankRequest(methodId, reqId, accId, amount);
+        // Switch purely to determine WHICH fields to read
+        switch (req.methodId) {
+            case 1: // Open Account
+                req.name = getString(buf);
+                req.password = getString(buf);
+                req.currency = getString(buf);
+                req.amount = buf.getDouble();
+                break;
+            case 2: // Close Account
+                req.name = getString(buf);
+                req.accNum = buf.getInt();
+                req.password = getString(buf);
+                break;
+            case 3: // Deposit
+            case 4: // Withdraw
+                req.name = getString(buf);
+                req.accNum = buf.getInt();
+                req.password = getString(buf);
+                req.currency = getString(buf);
+                req.amount = buf.getDouble();
+                break;
+            case 5: // Monitor
+                req.monitorInterval = buf.getInt();
+                break;
+        }
+        return req;
     }
-}
 
-// Simple helper class to hold the data
-class BankRequest {
-    public int methodId, reqId, accId;
-    public double amount;
-
-    public BankRequest(int m, int r, int a, double amt) {
-        this.methodId = m; this.reqId = r; this.accId = a; this.amount = amt;
+    private static String getString(ByteBuffer buf) {
+        int len = buf.getInt();
+        byte[] b = new byte[len];
+        buf.get(b);
+        return new String(b);
     }
 }
