@@ -63,7 +63,7 @@ namespace Marshaller {
         buf.appendString(name);
         buf.appendString(password);
         buf.appendString(currency);
-        buf.appendInt(initialBalance);
+        buf.appendDouble(initialBalance);
 
         return buf.data;
     };

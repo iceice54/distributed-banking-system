@@ -2,8 +2,7 @@
 #include <ws2tcpip.h>
 #include <iostream>
 
-#define DEFAULT_BUFLEN 512
-// #define DEFAULT_PORT "2222"
+#define DEFAULT_BUFLEN 1024
 
 int main(int argc, char **argv)
 {
@@ -20,15 +19,17 @@ int main(int argc, char **argv)
     int recvbuflen = DEFAULT_BUFLEN;
 
     // Validate params
-    if (argc != 3) {
-        printf("usage: %s server-name port-number\n", argv[0]);
+    if (argc != 3)
+    {
+        std::cout << "usage: " << argv[0] << " server-name port-number" << std::endl;
         return 1;
     }
 
     // Initialize Winsock
     iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
-    if (iResult != 0) {
-        printf("WSAStartup failed: %d\n", iResult);
+    if (iResult != 0)
+    {
+        std::cout << "WSAStartup failed " << iResult << std::endl;
         return 1;
     }
     
@@ -39,20 +40,22 @@ int main(int argc, char **argv)
 
     // Resolve server address and port
     iResult = getaddrinfo(argv[1], argv[2], &hints, &result);
-    if (iResult != 0) {
-        printf("getaddrinfo failed: %d\n", iResult);
+    if (iResult != 0)
+    {
+        std::cout << "getaddrinfo failed: " << iResult << std::endl;
         WSACleanup();
         return 1;
     }
 
-    // Create a SOCKET for connecting to server
+    // Create a socket for connecting to server
     ptr=result;
 
     SendSocket = socket(ptr->ai_family, ptr->ai_socktype, 
         ptr->ai_protocol);
 
-    if (SendSocket == INVALID_SOCKET) {
-        printf("Error at socket(): %ld\n", WSAGetLastError());
+    if (SendSocket == INVALID_SOCKET)
+    {
+        std::cout << "Error at socket(): " << WSAGetLastError() << std::endl;
         freeaddrinfo(result);
         WSACleanup();
         return 1;
@@ -61,21 +64,24 @@ int main(int argc, char **argv)
     // Send to server
     iResult = sendto(SendSocket, sendbuf, (int)strlen(sendbuf), 0, 
                          ptr->ai_addr, (int)ptr->ai_addrlen);
-    if (iResult == SOCKET_ERROR) {
-        printf("sendto failed: %d\n", WSAGetLastError());
-    } else {
-        printf("Sent %d bytes to %s:%s\n", iResult, argv[1], argv[2]);
+    if (iResult == SOCKET_ERROR)
+    {
+        std::cout << "sendto failed: " << WSAGetLastError() << std::endl;
+    } else
+    {
+        std::cout << "Sent " << iResult << " bytes to " << argv[1] << ":" << argv[2] << std::endl;
     }
 
-   // Receive the echo back
+   // Receive the response
     struct sockaddr_storage fromAddr;
     int fromLen = sizeof(fromAddr);
     iResult = recvfrom(SendSocket, recvbuf, DEFAULT_BUFLEN, 0, 
                        (struct sockaddr*)&fromAddr, &fromLen);
 
-    if (iResult > 0) {
+    if (iResult > 0)
+    {
         recvbuf[iResult] = '\0'; // Null terminate string
-        printf("Received echo: %s\n", recvbuf);
+        std::cout << "Received response: " << recvbuf << std::endl;
     }
 
     // Cleanup
