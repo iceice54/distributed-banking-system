@@ -3,10 +3,10 @@ import java.nio.charset.StandardCharsets;
 
 public class Marshaller {
 
-    public static BankRequest unmarshall(byte[] payload) {
-        //TODO
-        return BankRequest();
-    }
+//    public static BankRequest unmarshall(byte[] payload) {
+//        //TODO
+//        return BankRequest();
+//    }
     // Packs a simple Success/Fail response with a message
     public static byte[] packResponse(int reqId, int status, String message) {
         byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);

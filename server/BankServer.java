@@ -10,7 +10,7 @@ public class BankServer {
         DatagramSocket socket = null;
         try {
             socket = new DatagramSocket(PORT);
-            System.out.println("Server is listening on port " + PORT);
+            System.out.println("Server is listening on " + InetAddress.getLocalHost().getHostAddress() + ":" + PORT);
 
             while (true) {
                 byte[] buffer = new byte[1024];
@@ -19,18 +19,19 @@ public class BankServer {
 
                 byte[] requestData = Arrays.copyOf(requestPacket.getData(), requestPacket.getLength());
 
-                System.out.print("Client:" + requestPacket.getAddress() + ":" + requestPacket.getPort() + " ");
+                System.out.print("Client: " + requestPacket.getAddress() + ":" + requestPacket.getPort() + " ");
+
                 BankRequest req = Unmarshaller.unmarshall(requestData);
 
                 BankResponse resp = BankService.process(req, requestPacket.getAddress(), requestPacket.getPort());
 
-                byte[] replyData = Marshaller.marshall(resp);
-
-                DatagramPacket reply = new DatagramPacket(
-                        replyData, replyData.length,
-                        requestPacket.getAddress(), requestPacket.getPort()
-                );
-                socket.send(reply);
+//                byte[] replyData = Marshaller.marshall(resp);
+//
+//                DatagramPacket reply = new DatagramPacket(
+//                        replyData, replyData.length,
+//                        requestPacket.getAddress(), requestPacket.getPort()
+//                );
+//                socket.send(reply);
             }
         } catch (IOException e) {
             System.out.println("Client disconnected: " + e.getMessage());
