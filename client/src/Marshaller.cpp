@@ -41,8 +41,8 @@ public:
 enum class MethodId : uint32_t {
     OPEN_ACCOUNT  = 1,
     CLOSE_ACCOUNT = 2,
-    DEPOSIT       = 3,
-    WITHDRAW      = 4,
+    WITHDRAW      = 3,
+    DEPOSIT       = 4,
     MONITOR       = 5,
     // GET_DETAILS   = 6, // Idempotent
     // TRANSFER      = 7  // Non-Idempotent

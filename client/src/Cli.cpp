@@ -20,7 +20,12 @@ namespace Cli
         std::cout << "Enter your option: \n";
     }
 
-    std::string getValidString(const std::string& prompt)
+    void cleanBuffer() {
+        std::cin.clear();
+        std::cin.ignore(10000, '\n');
+    }
+
+    std::string getValidString(const std::string& prompt, int minLen=0, int maxLen=MAX_STR_LEN)
     {
         std::string input;
         while (true)
@@ -33,8 +38,13 @@ namespace Cli
                 continue;
             }
 
-            if (input.length() > MAX_STR_LEN) {
-                std::cout << "Error: Input too long (max " << MAX_STR_LEN << " chars\n";
+            if (input.length() < minLen) {
+                std::cout << "Error: Input too short (min " << minLen << " chars\n";
+                continue;
+            }
+
+            if (input.length() > maxLen) {
+                std::cout << "Error: Input too long (max " << maxLen << " chars\n";
                 continue;
             }
 
@@ -49,6 +59,7 @@ namespace Cli
             std::cout << prompt;
             if (std::cin >> value)
             {
+                cleanBuffer();
                 if (value >= 0) return value;
                 std::cout << "Error: Input cannot be negative or 0\n";
             }
@@ -63,17 +74,26 @@ namespace Cli
             std::cout << prompt;
             if (std::cin >> value)
             {
+                cleanBuffer();
                 if (value >= 0.0) return value;
                 std::cout << "Error: Input cannot be negative or 0\n";
             }
-            else std::cout << "Error: Invalid number\n";
+            else {
+                std::cout << "Error: Invalid number\n";
+                cleanBuffer();
+            }
         }
     }
 
     std::vector<char> handleMenuChoice(int reqId, bool& shouldExit)
     {
         int choice;
-        std::cin >> choice;
+        if (!(std::cin >> choice)) {
+            std::cout << "Invalid input.\n";
+            cleanBuffer();
+            return {};
+        }
+        cleanBuffer();
         
         switch (choice)
         {
@@ -99,7 +119,7 @@ namespace Cli
         std::cout << "----- Open New Account -----\n";
         std::string name = getValidString("Enter Name: ");
         std::string password = getValidString("Enter Password: ");
-        std::string currency = getValidString("Enter Currency (e.g. SGD): ");
+        std::string currency = getValidString("Enter Currency (e.g. SGD): ", 3, 3);
         double initialBalance   = getValidDouble("Enter Initial Balance: ");
 
         return Marshaller::marshallOpenAccount(reqId, name, password, currency, initialBalance);
@@ -122,7 +142,7 @@ namespace Cli
         std::string name = getValidString("Enter Name: ");
         int accNum = getValidInt("Enter account number: ");
         std::string password = getValidString("Enter Password: ");
-        std::string currency = getValidString("Enter Currency (e.g. SGD): ");
+        std::string currency = getValidString("Enter Currency (e.g. SGD): ", 3, 3);
         double amount = getValidDouble("Enter amount: ");
 
         return Marshaller::marshallWithdrawDeposit(type, reqId, name, accNum, password, currency, amount);
