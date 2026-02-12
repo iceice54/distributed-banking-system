@@ -1,12 +1,14 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iostream>
+#include <vector>
+#include <Cli.h>
 
 #define DEFAULT_BUFLEN 1024
 
 int main(int argc, char **argv)
 {
-	std::cout << "Bank Client Application" << std::endl;
+	std::cout << "Bank Client Application\n";
 
     WSADATA wsaData;
     SOCKET SendSocket = INVALID_SOCKET;
@@ -21,7 +23,7 @@ int main(int argc, char **argv)
     // Validate params
     if (argc != 3)
     {
-        std::cout << "usage: " << argv[0] << " server-name port-number" << std::endl;
+        std::cout << "usage: " << argv[0] << " server-name port-number\n";
         return 1;
     }
 
@@ -29,7 +31,7 @@ int main(int argc, char **argv)
     iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
     if (iResult != 0)
     {
-        std::cout << "WSAStartup failed " << iResult << std::endl;
+        std::cout << "WSAStartup failed " << iResult << "\n";
         return 1;
     }
     
@@ -42,7 +44,7 @@ int main(int argc, char **argv)
     iResult = getaddrinfo(argv[1], argv[2], &hints, &result);
     if (iResult != 0)
     {
-        std::cout << "getaddrinfo failed: " << iResult << std::endl;
+        std::cout << "getaddrinfo failed: " << iResult << "\n";
         WSACleanup();
         return 1;
     }
@@ -55,35 +57,53 @@ int main(int argc, char **argv)
 
     if (SendSocket == INVALID_SOCKET)
     {
-        std::cout << "Error at socket(): " << WSAGetLastError() << std::endl;
+        std::cout << "Error at socket(): " << WSAGetLastError() << "\n";
         freeaddrinfo(result);
         WSACleanup();
         return 1;
     }
 
-    // Send to server
-    iResult = sendto(SendSocket, sendbuf, (int)strlen(sendbuf), 0, 
-                         ptr->ai_addr, (int)ptr->ai_addrlen);
-    if (iResult == SOCKET_ERROR)
+    int reqId = 0;
+    bool shouldExit = false;
+
+    while (true)
     {
-        std::cout << "sendto failed: " << WSAGetLastError() << std::endl;
-    } else
-    {
-        std::cout << "Sent " << iResult << " bytes to " << argv[1] << ":" << argv[2] << std::endl;
+        Cli::displayMenu();
+
+        std::vector<char> payload = Cli::handleMenuChoice(reqId, shouldExit);
+
+        if (shouldExit) {
+            break;
+        }
+
+        if (payload.empty()) continue;
+
+        // Send to server
+        iResult = sendto(SendSocket, payload.data(), payload.size(), 0, 
+                            ptr->ai_addr, (int)ptr->ai_addrlen);
+        if (iResult == SOCKET_ERROR)
+        {
+            std::cout << "sendto failed: " << WSAGetLastError() << "\n";
+        } else
+        {
+            std::cout << "Sent " << iResult << " bytes to " << argv[1] << ":" << argv[2] << "\n";
+        }
+
+        // Receive the response
+        struct sockaddr_storage fromAddr;
+        int fromLen = sizeof(fromAddr);
+        iResult = recvfrom(SendSocket, recvbuf, DEFAULT_BUFLEN, 0, 
+                        (struct sockaddr*)&fromAddr, &fromLen);
+
+        if (iResult > 0)
+        {
+            recvbuf[iResult] = '\0'; // Null terminate string
+            std::cout << "Received response: " << recvbuf << "\n";
+        }
+
+        reqId++;
     }
-
-   // Receive the response
-    struct sockaddr_storage fromAddr;
-    int fromLen = sizeof(fromAddr);
-    iResult = recvfrom(SendSocket, recvbuf, DEFAULT_BUFLEN, 0, 
-                       (struct sockaddr*)&fromAddr, &fromLen);
-
-    if (iResult > 0)
-    {
-        recvbuf[iResult] = '\0'; // Null terminate string
-        std::cout << "Received response: " << recvbuf << std::endl;
-    }
-
+    
     // Cleanup
     freeaddrinfo(result);
     closesocket(SendSocket);
