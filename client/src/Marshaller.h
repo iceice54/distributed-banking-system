@@ -3,8 +3,8 @@
 #include <vector>
 #include <string>
 
-namespace Marshaller {
-
+namespace Marshaller
+{
     // Marshalls data for opening a new account
     // Returns a byte buffer ready for network transmission
     std::vector<char> marshallOpenAccount(

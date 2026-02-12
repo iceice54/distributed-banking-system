@@ -50,7 +50,8 @@ enum class MethodId : uint32_t {
 
 namespace Marshaller {
 
-    void appendMethod(Buffer& buf, MethodId id) {
+    void appendMethod(Buffer& buf, MethodId id)
+    {
         buf.appendInt(static_cast<int>(id));
     }
 

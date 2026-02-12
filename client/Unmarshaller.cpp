@@ -3,7 +3,8 @@
 #include <winsock2.h> // For ntohl
 
 namespace Unmarshaller {
-    Response unmarshall(const std::vector<char>& data) {
+    Response unmarshall(const std::vector<char>& data)
+    {
         Response resp = {0, 0, 0.0};
         
         // Safety check: Is the packet big enough?
