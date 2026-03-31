@@ -3,7 +3,7 @@ OBJ_DIR := obj
 BIN_DIR := bin
 # Compiler and Flags
 CXX      = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -g
+CXXFLAGS = -std=c++23 -Wall -Wextra -g
 # -lws2_32 links the Winsock library
 # -mconsole ensures the linker looks for main() instead of WinMain()
 LDFLAGS  = -lws2_32

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Cli.h"
 #include <vector>
 #include <string>
 
@@ -24,9 +25,8 @@ namespace Marshaller
     );
 
     // Marshalls data for withdrawing or depositing funds
-    // type: 0 for withdraw, 1 for deposit
     std::vector<char> marshallWithdrawDeposit(
-        int type, 
+        Cli::TransactionType type, 
         int reqId, 
         const std::string& name, 
         int accNum, 
@@ -41,4 +41,20 @@ namespace Marshaller
         int durationInSeconds
     );
 
+    // Marshalls data for checking balance
+    std::vector<char> marshallCheckBalance(
+        int reqId,
+        int accNum
+    );
+
+    // Marshalls data for transfers
+    std::vector<char> marshallTransfer(
+        int reqId,
+        const std::string& name, 
+        int outAccNum,
+        const std::string& password, 
+        int inAccNum,
+        const std::string& currency, 
+        double amount
+    );
 }

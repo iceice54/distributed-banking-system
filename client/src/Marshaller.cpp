@@ -1,42 +1,51 @@
 #include "Marshaller.h"
+#include "Cli.h"
 #include <winsock2.h>
 #include <string>
 #include <cstring>
 #include <cstdint>
+#include <vector>
 
-class Buffer
-{
-public:
-    std::vector<char> data;
+namespace {
 
-    void appendInt(int val)
+    class Buffer
     {
-        uint32_t netVal = htonl(static_cast<uint32_t>(val));
-        size_t oldSize = data.size();
-        data.resize(oldSize + 4);
-        std::memcpy(data.data() + oldSize, &netVal, 4);
-    }
+    public:
+        void appendInt(int val)
+        {
+            const uint32_t netVal = htonl(static_cast<uint32_t>(val));
+            append(&netVal, sizeof(netVal));
+        }
 
-    void appendDouble(double val)
-    {
-        uint64_t temp;
-        std::memcpy(&temp, &val, 8);
-        uint64_t netVal = htonll(temp);
+        void appendDouble(double val)
+        {
+            uint64_t temp;
+            std::memcpy(&temp, &val, sizeof(temp));
+            const uint64_t netVal = htonll(temp);
+            append(&netVal, sizeof(netVal));
+        }
 
-        size_t oldSize = data.size();
-        data.resize(oldSize + 8);
-        std::memcpy(data.data() + oldSize, &netVal, 8);
-    }
+        void appendString(const std::string& str)
+        {
+            appendInt(static_cast<int>(str.size()));
+            append(str.data(), str.size());
+        }
 
-    void appendString(const std::string& str)
-    {
-        appendInt(static_cast<int>(str.size()));
+        [[nodiscard]] std::vector<char> take() { return std::move(data_); }
 
-        size_t oldSize = data.size();
-        data.resize(oldSize + str.size());
-        std::memcpy(data.data() + oldSize, str.data(), str.size());
-    }
-};
+    private:
+        std::vector<char> data_;
+
+        template<typename T>
+        void append(const T* src, std::size_t size)
+        {
+            const auto oldSize = data_.size();
+            data_.resize(oldSize + size);
+            std::memcpy(data_.data() + oldSize, src, size);
+        }
+    };
+
+}
 
 enum class MethodId : uint32_t {
     OPEN_ACCOUNT  = 1,
@@ -44,15 +53,16 @@ enum class MethodId : uint32_t {
     WITHDRAW      = 3,
     DEPOSIT       = 4,
     MONITOR       = 5,
-    // GET_DETAILS   = 6, // Idempotent
-    // TRANSFER      = 7  // Non-Idempotent
+    CHECK_BALANCE = 6, // Idempotent
+    TRANSFER      = 7  // Non-Idempotent
 };
 
 namespace Marshaller {
 
-    void appendMethod(Buffer& buf, MethodId id)
-    {
-        buf.appendInt(static_cast<int>(id));
+    namespace {
+        void appendMethod(Buffer& buf, MethodId id) {
+            buf.appendInt(static_cast<int>(id));
+        }
     }
 
     std::vector<char> marshallOpenAccount(int reqId, const std::string& name, const std::string& password, const std::string& currency, double initialBalance)
@@ -60,13 +70,12 @@ namespace Marshaller {
         Buffer buf;
         appendMethod(buf, MethodId::OPEN_ACCOUNT);
         buf.appendInt(reqId);
-        
         buf.appendString(name);
         buf.appendString(password);
         buf.appendString(currency);
         buf.appendDouble(initialBalance);
 
-        return buf.data;
+        return buf.take();
     };
 
     std::vector<char> marshallCloseAccount(int reqId, const std::string& name, int accNum, const std::string& password)
@@ -74,28 +83,28 @@ namespace Marshaller {
         Buffer buf;
         appendMethod(buf, MethodId::CLOSE_ACCOUNT);
         buf.appendInt(reqId);
-
         buf.appendString(name);
         buf.appendInt(accNum);
         buf.appendString(password);
 
-        return buf.data;
+        return buf.take();
     }
 
-    std::vector<char> marshallWithdrawDeposit(int type, int reqId, const std::string& name, int accNum, const std::string& password, const std::string& currency, double amount)
+    std::vector<char> marshallWithdrawDeposit(Cli::TransactionType type, int reqId, const std::string& name, int accNum, const std::string& password, const std::string& currency, double amount)
     {
         Buffer buf;
-        MethodId method = (type == 0) ? MethodId::WITHDRAW : MethodId::DEPOSIT;
+        const MethodId method = (type == Cli::TransactionType::Withdraw)
+                              ? MethodId::WITHDRAW
+                              : MethodId::DEPOSIT;
         appendMethod(buf, method);
         buf.appendInt(reqId);
-
         buf.appendString(name);
         buf.appendInt(accNum);
         buf.appendString(password);
         buf.appendString(currency);
         buf.appendDouble(amount);
 
-        return buf.data;
+        return buf.take();
     }
     
     std::vector<char> marshallMonitor(int reqId, int durationInSeconds)
@@ -103,13 +112,31 @@ namespace Marshaller {
         Buffer buf;
         appendMethod(buf, MethodId::MONITOR);
         buf.appendInt(reqId);
-
         buf.appendInt(durationInSeconds);
 
-        return buf.data;
+        return buf.take();
     }
 
-    // std::vector<char> marshallCheckBalance(int reqId, int accId) {
-    //     return pack(1, reqId, accId, 0.0, "");
-    // }
+    std::vector<char> marshallCheckBalance(int reqId, int accNum) {
+        Buffer buf;
+        appendMethod(buf, MethodId::CHECK_BALANCE);
+        buf.appendInt(reqId);
+        buf.appendInt(accNum);
+
+        return buf.take();
+    }
+
+    std::vector<char> marshallTransfer(int reqId, const std::string& name, int outAccNum, const std::string& password, int inAccNum, const std::string& currency, double amount) {
+        Buffer buf;
+        appendMethod(buf, MethodId::TRANSFER);
+        buf.appendInt(reqId);
+        buf.appendString(name);
+        buf.appendInt(outAccNum);
+        buf.appendString(password);
+        buf.appendInt(inAccNum);
+        buf.appendString(currency);
+        buf.appendDouble(amount);
+
+        return buf.take();
+    }
 };

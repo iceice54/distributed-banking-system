@@ -1,5 +1,5 @@
 public class BankRequest {
-    public int methodId;
+    public MethodId methodId;
     public int reqId;
 
     // Optional fields (some might be null/0 depending on the method)
@@ -7,6 +7,7 @@ public class BankRequest {
     public String password;
     public Currency currency;
     public int accNum;
+    public int accNum2; // Used for transfers (accNum -> accNum2)
     public double amount;
     public int monitorInterval;
 

@@ -1,42 +1,80 @@
-import javax.xml.crypto.Data;
 import java.net.*;
 import java.io.*;
 import java.util.Arrays;
+import java.util.logging.Logger;
 
 public class BankServer {
     private static final int PORT = 2222;
+    private static final int BUFFER_SIZE = 1024;
+    private static final Logger logger = Logger.getLogger(BankServer.class.getName());
+    private static final double DROP_PROBABILITY = 0.2;
+
+    private static boolean shouldDrop() {
+        return Math.random() < DROP_PROBABILITY;
+    }
 
     public static void main(String[] args) {
-        DatagramSocket socket = null;
-        try {
-            socket = new DatagramSocket(PORT);
-            System.out.println("Server is listening on " + InetAddress.getLocalHost().getHostAddress() + ":" + PORT);
+        if (args.length != 1) {
+            System.err.println("Usage: Bankserver <alo|amo>");
+            System.exit(1);
+        }
+        final boolean atMostOnce = args[0].equals("amo");
+
+        try (DatagramSocket socket = new DatagramSocket(PORT)) {
+            logger.info("Server is listening on " + InetAddress.getLocalHost().getHostAddress() + ":" + PORT);
+            if (atMostOnce) {
+                logger.info("Server is using at-most-once semantics.");
+            } else {
+                logger.info("Server is using at-least-once semantics.");
+            }
+            final byte[] buffer = new byte[BUFFER_SIZE];
 
             while (true) {
-                byte[] buffer = new byte[1024];
-                DatagramPacket requestPacket = new DatagramPacket(buffer, buffer.length);
+                final DatagramPacket requestPacket = new DatagramPacket(buffer, buffer.length);
                 socket.receive(requestPacket);
 
-                byte[] requestData = Arrays.copyOf(requestPacket.getData(), requestPacket.getLength());
+                if (shouldDrop()) {
+                    logger.info("[SIMULATE] Dropped request from "
+                            + requestPacket.getAddress() + ":" + requestPacket.getPort());
+                    continue;
+                }
 
-                System.out.print("Client: " + requestPacket.getAddress() + ":" + requestPacket.getPort() + " ");
+                logger.info("Client at " + requestPacket.getAddress() + ":" + requestPacket.getPort());
 
-                BankRequest req = Unmarshaller.unmarshall(requestData);
+                final byte[] requestData = Arrays.copyOf(requestPacket.getData(), requestPacket.getLength());
+                final BankRequest req = Unmarshaller.unmarshall(requestData);
+                final String key = RequestHistory.makeKey(
+                        requestPacket.getAddress(), requestPacket.getPort(), req.reqId);
+                byte[] replyData;
 
-                BankResponse resp = BankService.process(req, requestPacket.getAddress(), requestPacket.getPort());
+                if (atMostOnce && RequestHistory.contains(key)) {
+                    // Duplicate request — return cached response
+                    logger.info("Duplicate request detected, returning cached response for key: " + key);
+                    replyData = RequestHistory.get(key);
+                } else {
+                    // New request — process it
+                    final BankResponse resp = BankService.process(
+                            req, requestPacket.getAddress(), requestPacket.getPort(), socket);
+                    replyData = Marshaller.marshall(resp);
 
-//                byte[] replyData = Marshaller.marshall(resp);
-//
-//                DatagramPacket reply = new DatagramPacket(
-//                        replyData, replyData.length,
-//                        requestPacket.getAddress(), requestPacket.getPort()
-//                );
-//                socket.send(reply);
+                    if (atMostOnce) {
+                        RequestHistory.put(key, replyData);
+                    }
+                }
+
+                if (shouldDrop()) {
+                    logger.info("[SIMULATE] Dropped reply to "
+                            + requestPacket.getAddress() + ":" + requestPacket.getPort());
+                    continue;
+                }
+
+                socket.send(new DatagramPacket(
+                        replyData, replyData.length,
+                        requestPacket.getAddress(), requestPacket.getPort()
+                ));
             }
         } catch (IOException e) {
-            System.out.println("Client disconnected: " + e.getMessage());
-        } finally {
-            if (socket != null) socket.close();
+            System.out.println("Server error: " + e.getMessage());
         }
     }
 }
