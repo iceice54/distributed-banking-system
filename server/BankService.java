@@ -31,6 +31,7 @@ public class BankService {
             return resp;
         }
 
+        // Handlers for all requests
         switch (req.methodId) {
             case OPEN_ACCOUNT: {
                 accounts.put(nextAccNum, new Account(req.name, req.password, req.currency, req.amount));

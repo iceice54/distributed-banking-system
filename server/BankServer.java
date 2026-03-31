@@ -14,6 +14,7 @@ public class BankServer {
     }
 
     public static void main(String[] args) {
+        // Set up server in at-least-once or at-most-once mode
         if (args.length != 1) {
             System.err.println("Usage: Bankserver <alo|amo>");
             System.exit(1);
@@ -29,10 +30,12 @@ public class BankServer {
             }
             final byte[] buffer = new byte[BUFFER_SIZE];
 
+            // Main loop
             while (true) {
                 final DatagramPacket requestPacket = new DatagramPacket(buffer, buffer.length);
                 socket.receive(requestPacket);
 
+                // Simulate dropped incoming packet (method not processed)
                 if (shouldDrop()) {
                     logger.info("[SIMULATE] Dropped request from "
                             + requestPacket.getAddress() + ":" + requestPacket.getPort());
@@ -62,6 +65,8 @@ public class BankServer {
                     }
                 }
 
+                // Simulate dropped outgoing packet (method already processed)
+                // Leads to inconsistent data when using at-least-once semantics
                 if (shouldDrop()) {
                     logger.info("[SIMULATE] Dropped reply to "
                             + requestPacket.getAddress() + ":" + requestPacket.getPort());

@@ -14,6 +14,8 @@ namespace Unmarshaller {
         std::string           message;
     };
 
+    // Unmarshalls all replies except for monitor updates
     Response unmarshall(const std::vector<char>& data);
+    // Unmarshalls monitor updates
     Response unmarshallUpdate(const std::vector<char>& data);
 }

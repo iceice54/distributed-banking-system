@@ -3,6 +3,7 @@ import java.nio.charset.StandardCharsets;
 
 public class Marshaller {
 
+    // Method for marshalling all responses except monitor updates
     public static byte[] marshall(BankResponse resp) {
         final String message  = resp.message != null ? resp.message : "";
         final byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
@@ -17,6 +18,7 @@ public class Marshaller {
         return buf.array();
     }
 
+    // Method for marshalling monitor updates
     public static byte[] marshallUpdate(String message) {
         final byte[] msgBytes = message.getBytes(StandardCharsets.UTF_8);
         final int totalSize   = Integer.BYTES + msgBytes.length;

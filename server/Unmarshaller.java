@@ -7,6 +7,8 @@ public class Unmarshaller {
 
     private static final Logger logger = Logger.getLogger(Unmarshaller.class.getName());
 
+    // Method for all unmarshalling
+    // !!! Needs to know exact structure of payload to function properly !!!
     public static BankRequest unmarshall(byte[] payload) {
         final ByteBuffer buf = ByteBuffer.wrap(payload);
         final BankRequest req = new BankRequest();
@@ -15,6 +17,7 @@ public class Unmarshaller {
             req.methodId = MethodId.fromInt(buf.getInt());
             req.reqId = buf.getInt();
 
+            // Handlers for all method types
             switch (req.methodId) {
                 case OPEN_ACCOUNT:
                     req.name = getString(buf);

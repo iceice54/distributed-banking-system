@@ -4,7 +4,6 @@
 #include <winsock2.h>
 
 namespace {
-
     uint32_t readUInt32(const char*& ptr) {
         uint32_t net;
         std::memcpy(&net, ptr, sizeof(net));

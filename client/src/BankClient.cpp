@@ -18,6 +18,7 @@ bool shouldDrop() {
     return (static_cast<double>(rand()) / RAND_MAX) < kDropProbability;
 }
 
+// Wrapper for WSA
 class WinsockContext {
 public:
     WinsockContext() {
@@ -26,13 +27,14 @@ public:
     }
     ~WinsockContext() { WSACleanup(); }
 
-    WinsockContext(const WinsockContext&)             = delete;
+    WinsockContext(const WinsockContext&)            = delete;
     WinsockContext& operator=(const WinsockContext&) = delete;
 
 private:
     WSADATA _wsaData{};
 };
 
+// Wrapper for socket
 class UdpSocket {
 public:
     explicit UdpSocket(addrinfo* addr) 
@@ -47,6 +49,7 @@ public:
     UdpSocket(const UdpSocket&)            = delete;
     UdpSocket& operator=(const UdpSocket&) = delete;
 
+    // Method to send packet to server
     void sendTo(const std::vector<char>& payload, addrinfo* addr) const {
         const auto sent = ::sendto(
             socket_,
@@ -61,6 +64,7 @@ public:
         std::cout << "Sent " << sent << " bytes\n";
     }
 
+    // Method to receive packet from server
     [[nodiscard]] std::vector<char> receiveFrom() const {
         std::array<char, kDefaultBufLen> buf{};
         sockaddr_storage fromAddr{};
@@ -79,11 +83,13 @@ public:
         return { buf.data(), buf.data() + received };
     }
 
+    // Set timeout on socket (for monitoring)
     void setTimeout(int timeoutMs) const {
         setsockopt(socket_, SOL_SOCKET, SO_RCVTIMEO,
             reinterpret_cast<const char*>(&timeoutMs), sizeof(timeoutMs));
     }
 
+    // Receive method used for monitor mode, identical to receiveFrom above but doesnt throw on SOCKET_ERROR
     [[nodiscard]] std::optional<std::vector<char>> tryReceiveFrom() const {
         std::array<char, kDefaultBufLen> buf{};
         sockaddr_storage fromAddr{};
@@ -104,11 +110,13 @@ private:
     SOCKET socket_;
 };
 
+// Custom deleter for AddrInfoPtr
 struct AddrInfoDeleter {
     void operator()(addrinfo* p) const { freeaddrinfo(p); }
 };
 using AddrInfoPtr = std::unique_ptr<addrinfo, AddrInfoDeleter>;
 
+// Method to resolve address of server
 [[nodiscard]] AddrInfoPtr resolveAddress(const std::string& host, const std::string& port) {
     addrinfo hints{};
     hints.ai_family   = AF_UNSPEC;
@@ -121,6 +129,7 @@ using AddrInfoPtr = std::unique_ptr<addrinfo, AddrInfoDeleter>;
 
     return AddrInfoPtr{ result };
 }
+
 
 [[nodiscard]] std::vector<char> sendWithRetry(
     const UdpSocket& socket,
@@ -159,7 +168,7 @@ using AddrInfoPtr = std::unique_ptr<addrinfo, AddrInfoDeleter>;
 
 void handleMonitorResponse(const UdpSocket& socket, int durationSeconds,
                            const std::vector<char>& payload, addrinfo* addr) {
-    // Use sendWithRetry for the initial registration — handles drops and timeouts
+    // Use sendWithRetry for the initial registration, handles drops and timeouts
     const auto data = sendWithRetry(socket, payload, addr);
     const auto resp = Unmarshaller::unmarshall(data);
     std::cout << resp.message << "\n";
@@ -188,6 +197,7 @@ int main(int argc, char **argv)
 {
 	std::cout << "Bank Client Application\n";
 
+    // Get args server, port
     if (argc != 3)
     {
         std::cout << "usage: " << argv[0] << " <server> <port>\n";
@@ -195,13 +205,15 @@ int main(int argc, char **argv)
     }
 
     try {
+        // Initialise resources
         const WinsockContext winsock;
         const auto           addrInfo = resolveAddress(argv[1], argv[2]);
         const UdpSocket      socket{ addrInfo.get() };
 
         int reqId = 0;
         bool shouldExit = false;
-
+        
+        // Main loop    
         while (!shouldExit) {
             Cli::displayMenu();
             const auto result = Cli::handleMenuChoice(reqId, shouldExit);
